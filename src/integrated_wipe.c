@@ -19,7 +19,7 @@ int perform_integrated_wipe(const char *device_path, const char *log_file) {
     const char *method;
     
     printf("Analyzing device: %s\n", device_path);
-    printf("Size: %lu bytes, Type: %s\n", info.size, info.is_ssd ? "SSD" : "HDD");
+    printf("Size: %lu bytes, Type: %s\n", info.size, info.is_rotational ? "SSD" : "HDD");
 
     // 1. First try SED crypto erase
     SedCapabilities caps;
@@ -29,13 +29,13 @@ int perform_integrated_wipe(const char *device_path, const char *log_file) {
         result = sed_crypto_erase(device_path, 1);
     } 
     // 2. Then try hardware secure erase
-    else if (!info.is_ssd) {  // Hardware erase better for HDDs
+    else if (!info.is_rotational) {  // Hardware erase better for HDDs
         method = "HARDWARE_SECURE_ERASE";
         printf("Using hardware secure erase...\n");
         result = hardware_secure_erase(device_path, &log_output);
     }
     // 3. Then try crypto wipe (for SSDs without SED)
-    else if (info.is_ssd) {
+    else if (info.is_rotational) {
         method = "SOFTWARE_CRYPTO_WIPE";
         printf("Using software cryptographic wipe...\n");
         result = crypto_wipe_device(device_path, &log_output);

@@ -12,10 +12,10 @@ typedef enum {
 } SedType;
 
 typedef struct {
-    SedType type;
+    char type[20];
     int supports_erase;
     int supports_enhanced_erase;
-    int is_locked;
+    int locked;
     int is_frozen;
     char security_version[16];
 } SedCapabilities;

@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "src/device_detection.h"
-#include "src/sed_module.h"
-#include "src/hardware_erase.h"
-#include "src/crypto_wipe.h"
-#include "src/json_logger.h"
-#include "src/integrated_wipe.h"
+#include "device_detection.h"
+#include "sed_module.h"
+#include "hardware_erase.h"
+#include "crypto_wipe.h"
+#include "json_logger.h"
+#include "integrated_wipe.h"
 
 void print_usage(const char *program_name) {
     printf("=== WipeSure - Secure Data Wiping Tool ===\n");
