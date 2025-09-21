@@ -36,7 +36,7 @@ typedef struct {
     int supports_secure_erase;
 } DeviceInfo;
 
-// SED capabilities structure - UPDATED WITH locked FIELD
+// SED capabilities structure
 typedef struct {
     char type[20];
     int supports_erase;
@@ -56,6 +56,7 @@ int get_smart_data(const char *device_path, char *output, size_t output_size);
 
 // SED functions
 int sed_detect_capabilities(const char *device_path, SedCapabilities *caps);
+int sed_crypto_erase(const char *device_path, int method);
 const char *sed_type_to_str(const char *type);
 
 // Utility functions
