@@ -1,13 +1,13 @@
 #define _GNU_SOURCE
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
+#include <sys/sysmacros.h>
 #include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <linux/fs.h>
-#include <sys/sysmacros.h>
 #include <time.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -127,38 +127,6 @@ int is_usb_device(const char *device_path) {
     return 0;
 }
 
-uint64_t get_device_size(const char *device_path) {
-    int fd = open(device_path, O_RDONLY);
-    if (fd < 0) {
-        return 0;
-    }
-    
-    uint64_t size = 0;
-    if (ioctl(fd, BLKGETSIZE64, &size) < 0) {
-        close(fd);
-        return 0;
-    }
-    
-    close(fd);
-    return size;
-}
-
-int get_device_sector_size(const char *device_path) {
-    int fd = open(device_path, O_RDONLY);
-    if (fd < 0) {
-        return 512; // Default sector size
-    }
-    
-    int sector_size = 512;
-    if (ioctl(fd, BLKSSZGET, &sector_size) < 0) {
-        close(fd);
-        return 512; // Default on error
-    }
-    
-    close(fd);
-    return sector_size;
-}
-
 void secure_zero(void *ptr, size_t size) {
     if (ptr && size > 0) {
         volatile unsigned char *p = ptr;
@@ -211,81 +179,4 @@ char *safe_strdup(const char *str) {
         return NULL;
     }
     return new_str;
-}
-
-int get_device_model(const char *device_path, char *model, size_t model_size) {
-    char sys_path[512];
-    struct stat st;
-    
-    if (stat(device_path, &st) < 0) {
-        return -1;
-    }
-    
-    snprintf(sys_path, sizeof(sys_path), 
-             "/sys/dev/block/%d:%d/device/model",
-             major(st.st_rdev), minor(st.st_rdev));
-    
-    FILE *f = fopen(sys_path, "r");
-    if (f) {
-        if (fgets(model, model_size, f)) {
-            // Remove trailing newline
-            model[strcspn(model, "\n")] = '\0';
-            fclose(f);
-            return 0;
-        }
-        fclose(f);
-    }
-    
-    return -1;
-}
-
-int get_device_serial(const char *device_path, char *serial, size_t serial_size) {
-    char sys_path[512];
-    struct stat st;
-    
-    if (stat(device_path, &st) < 0) {
-        return -1;
-    }
-    
-    snprintf(sys_path, sizeof(sys_path), 
-             "/sys/dev/block/%d:%d/device/serial",
-             major(st.st_rdev), minor(st.st_rdev));
-    
-    FILE *f = fopen(sys_path, "r");
-    if (f) {
-        if (fgets(serial, serial_size, f)) {
-            // Remove trailing newline
-            serial[strcspn(serial, "\n")] = '\0';
-            fclose(f);
-            return 0;
-        }
-        fclose(f);
-    }
-    
-    return -1;
-}
-
-int is_device_rotational(const char *device_path) {
-    char sys_path[512];
-    struct stat st;
-    char rotational[2] = {0};
-    
-    if (stat(device_path, &st) < 0) {
-        return -1;
-    }
-    
-    snprintf(sys_path, sizeof(sys_path), 
-             "/sys/dev/block/%d:%d/queue/rotational",
-             major(st.st_rdev), minor(st.st_rdev));
-    
-    FILE *f = fopen(sys_path, "r");
-    if (f) {
-        if (fgets(rotational, sizeof(rotational), f)) {
-            fclose(f);
-            return atoi(rotational);
-        }
-        fclose(f);
-    }
-    
-    return -1;
 }
