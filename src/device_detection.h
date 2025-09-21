@@ -1,9 +1,11 @@
+// device_detection.h - COMPLETE VERSION
 #ifndef DEVICE_DETECTION_H
 #define DEVICE_DETECTION_H
 
 #include <stdint.h>
 #include <stddef.h> 
 
+// Device types
 typedef enum {
     DEVICE_TYPE_HDD,
     DEVICE_TYPE_SSD,
@@ -12,6 +14,7 @@ typedef enum {
     DEVICE_TYPE_UNKNOWN
 } DeviceType;
 
+// Interface types
 typedef enum {
     INTERFACE_SATA,
     INTERFACE_NVME,
@@ -20,6 +23,16 @@ typedef enum {
     INTERFACE_UNKNOWN
 } InterfaceType;
 
+// SED types
+typedef enum {
+    SED_TYPE_NONE,
+    SED_TYPE_ATA,
+    SED_TYPE_NVME,
+    SED_TYPE_OPAL,
+    SED_TYPE_ENTERPRISE
+} SedType;
+
+// Device information structure
 typedef struct {
     char device_path[256];
     char model[41];
@@ -40,10 +53,13 @@ typedef struct {
 typedef struct {
     char type[20];
     int supports_erase;
+    int supports_enhanced_erase;
     int locked;
+    int is_frozen;
+    char security_version[16];
 } SedCapabilities;
 
-// Function prototypes
+// Device detection functions
 int device_detection_init();
 void device_detection_cleanup();
 int get_all_devices(DeviceInfo **devices, int *count);
@@ -56,8 +72,12 @@ int get_smart_data(const char *device_path, char *output, size_t output_size);
 
 // SED functions
 int sed_detect_capabilities(const char *device_path, SedCapabilities *caps);
-int sed_crypto_erase(const char *device_path, int method);
+int sed_crypto_erase(const char *device_path, int enhanced);
+int sed_unlock_device(const char *device_path, const char *password);
+int sed_change_password(const char *device_path, const char *old_pwd, const char *new_pwd);
+int sed_get_security_status(const char *device_path, char *status, size_t status_size);
 const char *sed_type_to_str(const char *type);
+int sed_is_supported(const char *device_path);
 
 // Utility functions
 const char* device_type_to_str(DeviceType type);

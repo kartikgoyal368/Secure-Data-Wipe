@@ -1,6 +1,6 @@
+
 #include "integrated_wipe.h"
 #include "device_detection.h"
-#include "sed_module.h"
 #include "hardware_erase.h"
 #include "crypto_wipe.h"
 #include "json_logger.h"
