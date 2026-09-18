@@ -10,6 +10,8 @@ echo "1. Installing universal build dependencies..."
 sudo apt-get update
 sudo apt-get install -y live-build live-boot syslinux grub-efi-amd64-bin squashfs-tools build-essential libssl-dev debian-archive-keyring fdisk
 
+SRC_DIR=$(pwd)
+
 WORK_DIR="/tmp/wipesure_universal_iso"
 echo "2. Preparing working directory..."
 mkdir -p $WORK_DIR
@@ -61,12 +63,12 @@ mkdir -p config/includes.chroot/opt/wipesure
 
 # Compile the C engine for AMD64 Architecture
 echo "Compiling WipeSure C Engine inside Linux environment..."
-cd /workspace
+cd $SRC_DIR
 make clean
 make
 cd $WORK_DIR
 
-cp /workspace/bin/wipe_sure config/includes.chroot/usr/local/bin/
+cp $SRC_DIR/bin/wipe_sure config/includes.chroot/usr/local/bin/
 chmod +x config/includes.chroot/usr/local/bin/wipe_sure
 
 # Copy Tauri App (Simulated path)
@@ -130,9 +132,9 @@ sudo lb build
 
 echo "8. Extracting final ISO..."
 if [ -f live-image-amd64.hybrid.iso ]; then
-    mv live-image-amd64.hybrid.iso /workspace/WipeSure-Universal-Boot.iso
-    echo "✅ SUCCESS! Universal ISO generated at /workspace/WipeSure-Universal-Boot.iso"
-    echo "Size: $(du -h /workspace/WipeSure-Universal-Boot.iso | cut -f1)"
+    mv live-image-amd64.hybrid.iso $SRC_DIR/WipeSure-Universal-Boot.iso
+    echo "✅ SUCCESS! Universal ISO generated at $SRC_DIR/WipeSure-Universal-Boot.iso"
+    echo "Size: $(du -h $SRC_DIR/WipeSure-Universal-Boot.iso | cut -f1)"
 else
     echo "❌ Build failed. Check live-build logs."
 fi

@@ -23,5 +23,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: WipeSure-Universal-Boot
-        path: /tmp/wipesure_universal_iso/live-image-amd64.hybrid.iso
+        path: WipeSure-Universal-Boot.iso
         if-no-files-found: error
