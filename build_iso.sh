@@ -28,6 +28,7 @@ lb config \
     --apt-indices false \
     --apt-recommends false \
     --bootappend-live "boot=live components quiet splash nomodeset" \
+    --bootloaders "grub-efi" \
     --iso-volume "WIPESURE_PRO" \
     --iso-application "WipeSure Data Erasure System" \
     --binary-images iso-hybrid

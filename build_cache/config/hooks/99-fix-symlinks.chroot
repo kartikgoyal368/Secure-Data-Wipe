@@ -1,0 +1,16 @@
+#!/bin/sh
+echo "Generating initramfs and fixing symlinks..."
+update-initramfs -c -k all || true
+cd /boot
+for f in vmlinuz-* generic; do
+    if [ -f "$f" ]; then
+        ln -sf "$f" vmlinuz
+        break
+    fi
+done
+for f in initrd.img-* generic; do
+    if [ -f "$f" ]; then
+        ln -sf "$f" initrd.img
+        break
+    fi
+done

@@ -1,0 +1,17 @@
+# Core utilities
+hdparm
+nvme-cli
+util-linux
+mmc-utils
+mdadm
+smartmontools
+
+# Proprietary Drivers for universal compatibility
+linux-firmware
+xserver-xorg-video-all
+
+# GUI dependencies
+xinit
+fluxbox
+x11-xserver-utils
+libwebkit2gtk-4.0-37

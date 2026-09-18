@@ -1,0 +1,27 @@
+name: Build WipeSure Universal ISO
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Run ISO Builder
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y live-build live-boot syslinux grub-efi-amd64-bin squashfs-tools build-essential libssl-dev debian-archive-keyring fdisk
+        chmod +x build_iso.sh
+        sudo ./build_iso.sh
+
+    - name: Upload ISO Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: WipeSure-Universal-Boot
+        path: /tmp/wipesure_universal_iso/live-image-amd64.hybrid.iso
+        if-no-files-found: error

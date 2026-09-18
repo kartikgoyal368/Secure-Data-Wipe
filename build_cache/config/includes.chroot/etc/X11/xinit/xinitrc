@@ -1,0 +1,7 @@
+#!/bin/sh
+xset s off
+xset s noblank
+xset -dpms
+# Launch WipeSure GUI in full screen Kiosk Mode
+# /opt/wipesure/wipesure-gui &
+exec fluxbox
