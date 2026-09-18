@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Run ISO Builder
       run: |
@@ -20,7 +20,7 @@ jobs:
         sudo ./build_iso.sh
 
     - name: Upload ISO Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: WipeSure-Universal-Boot
         path: /tmp/wipesure_universal_iso/live-image-amd64.hybrid.iso
