@@ -12,26 +12,46 @@ extern "C" {
     fn perform_integrated_wipe(device_path: *const std::os::raw::c_char, log_file: *const std::os::raw::c_char) -> std::os::raw::c_int;
 }
 
+use tauri::{AppHandle, Emitter};
+
 #[tauri::command]
-async fn start_secure_wipe(device_path: String) -> Result<String, String> {
+async fn start_secure_wipe(app: AppHandle, device_path: String) -> Result<String, String> {
     println!("Frontend requested wipe for device: {}", device_path);
 
     #[cfg(target_os = "linux")]
     {
-        // Real C Engine call (Will be used inside the Bootable Linux ISO)
-        use std::ffi::CString;
-        
-        let c_device_path = CString::new(device_path).map_err(|_| "Invalid device path")?;
-        let c_log_file = std::ptr::null();
-        
-        let result = unsafe {
-            perform_integrated_wipe(c_device_path.as_ptr(), c_log_file)
-        };
-        
-        if result == 0 {
+        use std::process::{Command, Stdio};
+        use std::io::{BufRead, BufReader, Write};
+
+        let mut child = Command::new("/usr/local/bin/wipe_sure")
+            .arg("wipe")
+            .arg(&device_path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to spawn wipe_sure: {}", e))?;
+
+        // Provide the YES confirmation required by the CLI
+        if let Some(mut stdin) = child.stdin.take() {
+            let _ = stdin.write_all(b"YES\n");
+        }
+
+        if let Some(stdout) = child.stdout.take() {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines() {
+                if let Ok(l) = line {
+                    println!("WIPE: {}", l);
+                    let _ = app.emit("wipe-log", l);
+                }
+            }
+        }
+
+        let status = child.wait().map_err(|e| format!("Wait failed: {}", e))?;
+        if status.success() {
             Ok("SUCCESS".to_string())
         } else {
-            Err(format!("Wipe failed with error code: {}", result))
+            Err(format!("Wipe failed with status: {}", status))
         }
     }
 
@@ -39,12 +59,23 @@ async fn start_secure_wipe(device_path: String) -> Result<String, String> {
     {
         // Mock execution for Mac development/UI testing
         println!("⚠️ Running on macOS. The low-level C wipe engine is disabled.");
-        println!("Mocking 7-second hardware wipe for UI testing...");
-        
-        thread::sleep(Duration::from_secs(7));
+        let _ = app.emit("wipe-log", "Initializing root environment (uid=0)...");
+        thread::sleep(Duration::from_millis(500));
+        let _ = app.emit("wipe-log", "Disabling Kernel I/O locks...");
+        thread::sleep(Duration::from_millis(1500));
+        let _ = app.emit("wipe-log", format!("Scanning {} for HPA/DCO sectors...", device_path));
+        let _ = app.emit("wipe-log", "hdparm -N -> HPA Unlocked");
+        thread::sleep(Duration::from_millis(2000));
+        let _ = app.emit("wipe-log", "Issuing NVMe Format NVM command (Crypto Erase)...");
+        let _ = app.emit("wipe-log", "Sending high-voltage spike to NAND cells...");
+        thread::sleep(Duration::from_millis(2500));
+        let _ = app.emit("wipe-log", "O_DIRECT cache bypass engaged.");
+        let _ = app.emit("wipe-log", "verify_wipe() scanning random 1MB sector blocks...");
+        thread::sleep(Duration::from_millis(2000));
+        let _ = app.emit("wipe-log", "=== Wipe Complete ===");
+        let _ = app.emit("wipe-log", "Result: SUCCESS");
         
         generate_certificate(device_path).map_err(|e| format!("Failed to generate cert: {}", e))?;
-        
         Ok("SUCCESS".to_string())
     }
 }

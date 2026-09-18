@@ -8,20 +8,23 @@ set -e
 echo "=== WipeSure Universal ISO Builder ==="
 echo "1. Installing universal build dependencies..."
 sudo apt-get update
-sudo apt-get install -y live-build live-boot syslinux grub-efi-amd64-bin squashfs-tools build-essential libssl-dev
+sudo apt-get install -y live-build live-boot syslinux grub-efi-amd64-bin squashfs-tools build-essential libssl-dev debian-archive-keyring fdisk
 
 WORK_DIR="/tmp/wipesure_universal_iso"
-echo "2. Cleaning previous builds..."
-sudo rm -rf $WORK_DIR
+echo "2. Preparing working directory..."
 mkdir -p $WORK_DIR
 cd $WORK_DIR
 
 echo "3. Configuring Debian Live Build (Universal Hardware Mode)..."
 # Configure live-build for amd64 architecture, standard desktop, non-free firmware
 lb config \
+    --mode ubuntu \
     --architecture amd64 \
+    --distribution jammy \
+    --mirror-bootstrap "http://archive.ubuntu.com/ubuntu/" \
+    --mirror-binary "http://archive.ubuntu.com/ubuntu/" \
     --linux-packages "linux-image linux-headers" \
-    --archive-areas "main contrib non-free non-free-firmware" \
+    --archive-areas "main restricted universe multiverse" \
     --apt-indices false \
     --apt-recommends false \
     --bootappend-live "boot=live components quiet splash nomodeset" \
@@ -41,11 +44,7 @@ mdadm
 smartmontools
 
 # Proprietary Drivers for universal compatibility
-firmware-linux
-firmware-linux-nonfree
-firmware-iwlwifi
-firmware-realtek
-firmware-misc-nonfree
+linux-firmware
 xserver-xorg-video-all
 
 # GUI dependencies
@@ -99,6 +98,31 @@ if [ -z "$DISPLAY" ] && [ $(tty) = /dev/tty1 ]; then
     startx
 fi
 EOF
+
+mkdir -p config/hooks
+cat << 'EOF' > config/hooks/99-fix-symlinks.chroot
+#!/bin/sh
+echo "Generating initramfs and fixing symlinks..."
+update-initramfs -c -k all || true
+cd /boot
+for f in vmlinuz-* generic; do
+    if [ -f "$f" ]; then
+        ln -sf "$f" vmlinuz
+        break
+    fi
+done
+for f in initrd.img-* generic; do
+    if [ -f "$f" ]; then
+        ln -sf "$f" initrd.img
+        break
+    fi
+done
+EOF
+chmod +x config/hooks/99-fix-symlinks.chroot
+
+echo "Patching live-build syslinux defaults for Ubuntu Jammy..."
+sudo sed -i 's/syslinux-themes-ubuntu-oneiric//g' /usr/lib/live/build/binary_syslinux || true
+sudo sed -i 's/gfxboot-theme-ubuntu//g' /usr/lib/live/build/binary_syslinux || true
 
 echo "7. Building the Universal ISO (This will take 15-30 minutes to download drivers)..."
 sudo lb build
