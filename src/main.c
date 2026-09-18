@@ -7,6 +7,7 @@
 #include "crypto_wipe.h"
 #include "json_logger.h"
 #include "integrated_wipe.h"
+#include "verify.h"
 
 void print_usage(const char *program_name) {
     printf("=== WipeSure - Secure Data Wiping Tool ===\n");
@@ -187,6 +188,11 @@ void test_command() {
     
     printf("5. Testing crypto wipe... ");
     result = crypto_wipe_device("/dev/sda", &log_output);
+    printf("✓ Function available (Result: %d)\n", result);
+    if (log_output) free(log_output);
+    
+    printf("6. Testing verification module... ");
+    result = verify_wipe("/dev/test", 1024*1024*100, &log_output); // Test with fake 100MB device
     printf("✓ Function available (Result: %d)\n", result);
     if (log_output) free(log_output);
     
