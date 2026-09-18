@@ -3,12 +3,12 @@
 # Generates a bootable Linux ISO compatible with Dell, HP, ASUS, Acer, and Lenovo.
 # Uses Debian Live-Build with non-free firmware for universal driver support.
 
-set -e
+# set -e
 
 echo "=== WipeSure Universal ISO Builder ==="
 echo "1. Installing universal build dependencies..."
 sudo apt-get update
-sudo apt-get install -y live-build live-boot syslinux grub-efi-amd64-bin squashfs-tools build-essential libssl-dev debian-archive-keyring fdisk
+sudo apt-get install -y live-build live-boot syslinux syslinux-utils grub-efi-amd64-bin squashfs-tools build-essential libssl-dev debian-archive-keyring fdisk
 
 SRC_DIR=$(pwd)
 
@@ -30,10 +30,10 @@ lb config \
     --apt-indices false \
     --apt-recommends false \
     --bootappend-live "boot=live components quiet splash nomodeset" \
-    --bootloaders "grub-efi" \
+    --bootloader "grub-efi" \
     --iso-volume "WIPESURE_PRO" \
     --iso-application "WipeSure Data Erasure System" \
-    --binary-images iso-hybrid
+    --binary-images iso
 
 echo "4. Injecting Proprietary Drivers (linux-firmware)..."
 mkdir -p config/package-lists
@@ -45,6 +45,7 @@ util-linux
 mmc-utils
 mdadm
 smartmontools
+syslinux-utils
 
 # Proprietary Drivers for universal compatibility
 linux-firmware
@@ -131,8 +132,8 @@ echo "7. Building the Universal ISO (This will take 15-30 minutes to download dr
 sudo lb build
 
 echo "8. Extracting final ISO..."
-if [ -f live-image-amd64.hybrid.iso ]; then
-    mv live-image-amd64.hybrid.iso $SRC_DIR/WipeSure-Universal-Boot.iso
+if [ -f live-image-amd64.iso ]; then
+    mv live-image-amd64.iso $SRC_DIR/WipeSure-Universal-Boot.iso
     echo "✅ SUCCESS! Universal ISO generated at $SRC_DIR/WipeSure-Universal-Boot.iso"
     echo "Size: $(du -h $SRC_DIR/WipeSure-Universal-Boot.iso | cut -f1)"
 else

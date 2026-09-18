@@ -5,6 +5,7 @@ util-linux
 mmc-utils
 mdadm
 smartmontools
+syslinux-utils
 
 # Proprietary Drivers for universal compatibility
 linux-firmware
