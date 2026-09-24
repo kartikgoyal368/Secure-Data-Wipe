@@ -9,7 +9,7 @@ export default function Hero() {
       {/* Interactive Nebula Flow Canvas (Restricted strictly to Hero Background) */}
       <div className="hidden lg:block">
         <NebulaFlow
-          colors={["#000000", "#18181b", "#ffffff"]}
+          colors={["#450a0a", "#7f1d1d", "#b91c1c"]}
           speed={0.75}
           scale={1.15}
           density={0.85}
