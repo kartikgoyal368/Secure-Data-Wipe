@@ -15,7 +15,7 @@ jobs:
     - name: Run ISO Builder
       run: |
         sudo apt-get update
-        sudo apt-get install -y live-build live-boot syslinux grub-efi-amd64-bin squashfs-tools build-essential libssl-dev debian-archive-keyring fdisk
+        sudo apt-get install -y live-build live-boot live-config syslinux squashfs-tools genisoimage xorriso grub-pc-bin grub-efi-amd64-bin mtools dosfstools build-essential libssl-dev debian-archive-keyring fdisk debootstrap
         chmod +x build_iso.sh
         sudo ./build_iso.sh
 
