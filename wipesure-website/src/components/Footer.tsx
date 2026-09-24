@@ -1,11 +1,16 @@
 "use client";
 
 import { ShieldCheck, ArrowSquareOut } from "@phosphor-icons/react";
+import AsciiWave from "@/components/lightswind/ascii-wave";
 
 export default function Footer() {
   return (
-    <footer className="w-full bg-neutral-950 py-16 border-t border-neutral-900 text-neutral-400 font-sans">
-      <div className="max-w-6xl mx-auto px-6">
+    <footer className="w-full bg-neutral-950 py-16 border-t border-neutral-900 text-neutral-400 font-sans relative overflow-hidden">
+      {/* AsciiWave decorative background */}
+      <div className="absolute inset-0 pointer-events-none opacity-20">
+        <AsciiWave color="#ffffff" speed={0.5} className="w-full h-full" />
+      </div>
+      <div className="max-w-6xl mx-auto px-6 relative z-10">
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12 text-left">
           
