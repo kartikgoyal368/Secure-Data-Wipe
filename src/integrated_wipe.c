@@ -3,6 +3,7 @@
 #include "device_detection.h"
 #include "hardware_erase.h"
 #include "crypto_wipe.h"
+#include "emmc_erase.h"
 #include "json_logger.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,33 +20,39 @@ int perform_integrated_wipe(const char *device_path, const char *log_file) {
     const char *method;
     
     printf("Analyzing device: %s\n", device_path);
-    printf("Size: %lu bytes, Type: %s\n", info.size, info.is_rotational ? "SSD" : "HDD");
+    /* BUG FIX: is_rotational==1 means HDD, is_rotational==0 means SSD */
+    printf("Size: %lu bytes, Type: %s\n", info.size, info.is_rotational ? "HDD" : "SSD");
 
-    // 1. First try SED crypto erase
+    // 1. First try SED crypto erase (fastest — hardware-native key discard)
     SedCapabilities caps;
     if (sed_detect_capabilities(device_path, &caps) == 0 && caps.supports_erase) {
         method = "SED_CRYPTO_ERASE";
         printf("Using SED cryptographic erase...\n");
         result = sed_crypto_erase(device_path, 1);
-    } 
-    // 2. Then try hardware secure erase
-    else if (!info.is_rotational) {  // Hardware erase better for HDDs
+    }
+    // 2. eMMC sanitize (for mmcblk devices like SD cards and embedded storage)
+    else if (strstr(device_path, "mmcblk") != NULL) {
+        method = "EMMC_SANITIZE";
+        printf("Using eMMC sanitize erase...\n");
+        result = emmc_secure_erase(device_path, &log_output);
+    }
+    // 3. Hardware ATA/NVMe Secure Erase for HDDs (rotational drives)
+    /*
+     * BUG FIX: was `!info.is_rotational` which incorrectly sent HDDs through
+     * software crypto wipe and SSDs through hardware erase. Corrected:
+     *   - Rotational (HDD)  -> hardware_secure_erase (ATA Secure Erase via hdparm)
+     *   - Non-rotational (SSD without SED) -> crypto_wipe_device
+     */
+    else if (info.is_rotational) {
         method = "HARDWARE_SECURE_ERASE";
-        printf("Using hardware secure erase...\n");
+        printf("Using hardware ATA secure erase (HDD)...\n");
         result = hardware_secure_erase(device_path, &log_output);
     }
-    // 3. Then try crypto wipe (for SSDs without SED)
-    else if (info.is_rotational) {
-        method = "SOFTWARE_CRYPTO_WIPE";
-        printf("Using software cryptographic wipe...\n");
-        result = crypto_wipe_device(device_path, &log_output);
-    }
-    // 4. Fallback to basic overwrite
+    // 4. Software Crypto Wipe for SSDs without SED support
     else {
-        method = "OVERWRITE";
-        printf("Using basic overwrite...\n");
-        // You'd implement basic overwrite here
-        result = -1; // Placeholder
+        method = "SOFTWARE_CRYPTO_WIPE";
+        printf("Using software cryptographic wipe (SSD without SED)...\n");
+        result = crypto_wipe_device(device_path, &log_output);
     }
     
     // Generate and save JSON log

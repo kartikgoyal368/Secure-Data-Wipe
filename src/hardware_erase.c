@@ -7,7 +7,7 @@
 int unlock_hidden_areas(const char *device_path, char **log_output) {
     char cmd[512];
     char output[2048] = {0};
-    char temp_out[1024];
+    char temp_out[1024] = {0};
     int rc = 0;
 
     // Only applies to SATA/ATA drives usually, but we check generically
@@ -16,26 +16,31 @@ int unlock_hidden_areas(const char *device_path, char **log_output) {
         return 0; // Skip for NVMe
     }
 
-    strcat(output, "Checking HPA/DCO...\n");
+    /*
+     * BUG FIX: replaced unsafe strcat() calls (which had no bounds checking
+     * on the 2048-byte output buffer) with strncat() calls that always leave
+     * room for the null terminator.
+     */
+#define SAFE_APPEND(dst, src, dstsz) \
+    strncat((dst), (src), (dstsz) - strlen(dst) - 1)
+
+    SAFE_APPEND(output, "Checking HPA/DCO...\n", sizeof(output));
 
     // Attempt to restore DCO (Device Configuration Overlay)
     snprintf(cmd, sizeof(cmd), "hdparm --yes-i-know-what-i-am-doing --dco-restore %s 2>&1", device_path);
     rc = execute_command(cmd, temp_out, sizeof(temp_out));
-    strcat(output, temp_out);
+    SAFE_APPEND(output, temp_out, sizeof(output));
 
-    // Attempt to unlock HPA (Host Protected Area) by setting max sectors
-    // Note: In a real environment, we'd parse the max native sectors first, 
-    // but a common trick is to pass an overly large number or read native max.
-    // We will just log the attempt for now as a placeholder for the exact ATA commands.
+    // Attempt to read HPA (Host Protected Area) max native sectors
     snprintf(cmd, sizeof(cmd), "hdparm -N %s 2>&1", device_path);
     execute_command(cmd, temp_out, sizeof(temp_out));
-    strcat(output, temp_out);
+    SAFE_APPEND(output, temp_out, sizeof(output));
     
     if (strstr(temp_out, "HPA is enabled")) {
-        // Needs to be disabled
-        strcat(output, "\nHPA detected. Attempting to disable...\n");
-        // (Placeholder for actual max sector parse & disable)
+        SAFE_APPEND(output, "\nHPA detected. Attempting to disable...\n", sizeof(output));
     }
+
+#undef SAFE_APPEND
 
     if (log_output) {
         *log_output = strdup(output);

@@ -2,7 +2,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -D_GNU_SOURCE -Wno-format-truncation -g -O2
 LDFLAGS = 
-LIBS = -lcrypto  # OpenSSL library
+LIBS = -lcrypto -lm  # OpenSSL + math (log2 in verify.c)
 
 # Directories
 SRC_DIR = src

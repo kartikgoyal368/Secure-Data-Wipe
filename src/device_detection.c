@@ -272,18 +272,105 @@ int get_device_info(const char *device_path, DeviceInfo *info) {
     return 0;
 }
 
-// Placeholder SED functions
+/*
+ * sed_detect_capabilities:
+ *   BUG FIX: was a stub that always returned -1, making the SED erase code
+ *   path permanently unreachable regardless of the drive's actual capabilities.
+ *
+ *   Now performs real detection:
+ *   1. Try sedutil-cli (most reliable for TCG/OPAL 1.0 & 2.0 drives).
+ *   2. Fall back to parsing hdparm -I output for TCG/SED/OPAL/Pyrite keywords.
+ */
 int sed_detect_capabilities(const char *device_path, SedCapabilities *caps) {
+    if (!device_path || !caps) return -1;
+
     memset(caps, 0, sizeof(SedCapabilities));
     strcpy(caps->type, "UNKNOWN");
     caps->supports_erase = 0;
     caps->locked = 0;
-    return -1; // Not supported
+
+    char cmd[256];
+    char output[2048] = {0};
+
+    /* --- Method 1: sedutil-cli --- */
+    if (access("/usr/sbin/sedutil-cli", X_OK) == 0 ||
+        access("/usr/local/sbin/sedutil-cli", X_OK) == 0) {
+        snprintf(cmd, sizeof(cmd),
+                 "sedutil-cli --scan 2>/dev/null | grep -i \"%s\" | head -1",
+                 device_path);
+        if (execute_command(cmd, output, sizeof(output)) == 0 && strlen(output) > 2) {
+            /* sedutil-cli line format: /dev/sda  2  Samsung SSD ... */
+            /* Field 2 == OPAL version (1 or 2 means supported) */
+            if (strstr(output, "  1 ") || strstr(output, "  2 ")) {
+                caps->supports_erase = 1;
+
+                if (strstr(output, "  2 ")) {
+                    strcpy(caps->type, "OPAL2");
+                } else {
+                    strcpy(caps->type, "OPAL1");
+                }
+
+                /* Check locked state */
+                snprintf(cmd, sizeof(cmd),
+                         "sedutil-cli --query %s 2>/dev/null | grep -i locked | head -1",
+                         device_path);
+                char locked_out[256] = {0};
+                execute_command(cmd, locked_out, sizeof(locked_out));
+                if (strstr(locked_out, "Y") || strstr(locked_out, "yes")) {
+                    caps->locked = 1;
+                }
+                return 0;
+            }
+        }
+    }
+
+    /* --- Method 2: hdparm -I keyword scan --- */
+    snprintf(cmd, sizeof(cmd), "hdparm -I %s 2>/dev/null", device_path);
+    memset(output, 0, sizeof(output));
+    if (execute_command(cmd, output, sizeof(output)) != 0 || strlen(output) < 10) {
+        return -1; // hdparm not available or device not ATA
+    }
+
+    /* Check for TCG/SED/OPAL/Pyrite support in hdparm -I output */
+    int found = 0;
+
+    if (strstr(output, "Trusted Computing") || strstr(output, "TCG")) {
+        found = 1;
+        caps->supports_erase = 1;
+
+        if (strstr(output, "OPAL") || strstr(output, "Opal")) {
+            strcpy(caps->type, "OPAL");
+        } else if (strstr(output, "Pyrite") || strstr(output, "PYRITE")) {
+            strcpy(caps->type, "PYRITE");
+        } else if (strstr(output, "Ruby") || strstr(output, "RUBY")) {
+            strcpy(caps->type, "RUBY");
+        } else {
+            strcpy(caps->type, "TCG");
+        }
+    } else if (strstr(output, "Security Mode feature set")) {
+        /* ATA Security — not full TCG/SED but supports ATA secure erase */
+        found = 1;
+        caps->supports_erase = 1;
+        strcpy(caps->type, "ATA_SECURITY");
+    }
+
+    if (found) {
+        /* Check locked: hdparm -I reports "enabled" / "locked" under Security */
+        if (strstr(output, "\tlocked")) {
+            caps->locked = 1;
+        }
+        return 0;
+    }
+
+    return -1; // No SED/TCG capability detected
 }
 
 const char *sed_type_to_str(const char *type) {
-    if (strcmp(type, "OPAL") == 0) return "Opal";
+    if (strcmp(type, "OPAL") == 0 || strcmp(type, "OPAL1") == 0) return "Opal 1.0";
+    if (strcmp(type, "OPAL2") == 0) return "Opal 2.0";
     if (strcmp(type, "PYRITE") == 0) return "Pyrite";
     if (strcmp(type, "RUBY") == 0) return "Ruby";
+    if (strcmp(type, "TCG") == 0) return "TCG Generic";
+    if (strcmp(type, "ATA_SECURITY") == 0) return "ATA Security";
     return type;
 }

@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include "device_detection.h"
 #include "hardware_erase.h"
 #include "crypto_wipe.h"
 #include "json_logger.h"
 #include "integrated_wipe.h"
 #include "verify.h"
+#include "utils.h"
 
 void print_usage(const char *program_name) {
     printf("=== WipeSure - Secure Data Wiping Tool ===\n");
@@ -101,6 +103,14 @@ void wipe_command(const char *device_path, const char *log_file) {
     
     // Get device info first
     DeviceInfo info;
+    /*
+     * BUG FIX: validate that the provided path is actually a block device
+     * before attempting any destructive operations on it.
+     */
+    if (!is_valid_device_path(device_path)) {
+        printf("Error: '%s' is not a valid block device path.\n", device_path);
+        return;
+    }
     if (get_device_info(device_path, &info) != 0) {
         printf("Error: Cannot get device information\n");
         return;
@@ -144,9 +154,22 @@ void wipe_command(const char *device_path, const char *log_file) {
     if (log_file) {
         printf("Log saved to: %s\n", log_file);
         printf("\nLog content:\n");
-        char cmd[256];
-        snprintf(cmd, sizeof(cmd), "cat %s", log_file);
-        system(cmd);
+        /*
+         * BUG FIX: was system("cat <user_supplied_path>") which allows
+         * shell injection (e.g. log_file = "; rm -rf /"). Replaced with
+         * a direct open()/read()/write() loop that never touches a shell.
+         */
+        int log_fd = open(log_file, O_RDONLY);
+        if (log_fd >= 0) {
+            char buf[4096];
+            ssize_t n;
+            while ((n = read(log_fd, buf, sizeof(buf))) > 0) {
+                write(STDOUT_FILENO, buf, (size_t)n);
+            }
+            close(log_fd);
+        } else {
+            printf("(could not open log file for display)\n");
+        }
     }
 }
 
